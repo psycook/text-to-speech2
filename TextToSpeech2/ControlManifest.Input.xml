@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="smc" constructor="TextToSpeech2" version="0.0.1" display-name-key="Text to speech v2.0" description-key="Text to speech v2.0 PCF component" control-type="standard" >
+  <control namespace="smc" constructor="TextToSpeech2" version="0.0.3" display-name-key="Text to speech v2.0" description-key="Text to speech v2.0 PCF component" control-type="standard" >
     <external-service-usage enabled="false">
       <domain>uksouth.tts.speech.microsoft.com</domain>
     </external-service-usage>

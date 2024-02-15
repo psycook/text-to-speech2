@@ -19,6 +19,8 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
     private _playColor : string = "blue";
     private _stopColor : string = "red";
     private _audio : HTMLAudioElement | null = null;
+    private _width : number = 0;
+    private _height : number = 0;
 
     // ui attributes
     private _container : HTMLDivElement;
@@ -65,7 +67,9 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
            this._voice === context.parameters.voice.raw &&
            this._playColor === context.parameters.playColor.raw &&
            this._stopColor === context.parameters.stopColor.raw &&
-           this._autoSpeak === context.parameters.autoSpeak.raw) {
+           this._autoSpeak === context.parameters.autoSpeak.raw &&
+           this._width === context.mode.allocatedWidth &&
+           this._height === context.mode.allocatedHeight) {
             return;
         }
 
@@ -79,6 +83,8 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
         this._autoSpeak = context.parameters.autoSpeak.raw as boolean;
         this._playColor = context.parameters.playColor.raw as string;
         this._stopColor = context.parameters.stopColor.raw as string;
+        this._width = context.mode.allocatedWidth;
+        this._height = context.mode.allocatedHeight;
 
         // Add code to update control view
         if(!this._isInitialised) {        
@@ -94,7 +100,16 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
             this._container.appendChild(this._buttonDiv);  
             this._isInitialised = true;
         } else {
-            this.setPlayButton();
+            switch(this._state) {
+                case "speaking":
+                    this.setStopButton();
+                    break;
+                case "loading":
+                    this.setAnimatedButton();
+                    break;
+                default:
+                    this.setPlayButton();
+            }
         }
         if(this._autoSpeak) this.buttonPressed();
     }
@@ -128,6 +143,11 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
             return;
         }
 
+        // check if we are loading
+        if(this._state === "loading") {
+            return;
+        }
+
         // check if we are already speaking
         if(this._state === "speaking") {
             if(this._audio) {
@@ -141,9 +161,10 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
         }
 
         // set state to speaking
-        this._state = "speaking";
+        this._state = "loading";
         this._autoSpeak = false;
         this._notifyOutputChanged();
+        this.setAnimatedButton();
 
         // create the async function
         const restAction = async () => {
@@ -159,6 +180,7 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
             ).then(result => result.blob()
             ).then(blob => {
                 // change to stop button
+                this._state = "speaking";
                 this.setStopButton();
                 const audioURL = URL.createObjectURL(blob);
                 this._audio = new Audio(audioURL);
@@ -182,4 +204,9 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
     public setStopButton() {
         this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_236_16)"><circle cx="512" cy="512" r="448" fill="${this._stopColor}"/><circle cx="512" cy="512" r="480" stroke="${this._stopColor}" stroke-opacity="0.5" stroke-width="64"/><rect x="256" y="256" width="512" height="512" rx="64" fill="white"/></g><defs><clipPath id="clip0_236_16"><rect width="1024" height="1024" fill="white"/></clipPath></defs></svg>`;
     }
+
+    public setAnimatedButton() {
+        this._buttonDiv.innerHTML = `<svg width="${this._context.mode.allocatedWidth}" height="${this._context.mode.allocatedHeight}" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_626_2)"><circle cx="512" cy="512" r="448" fill="${this._playColor}"/><circle cx="512" cy="512" r="480" stroke="${this._playColor}" stroke-opacity="0.5" stroke-width="64"/><path d="M768 456.574C810.667 481.208 810.667 542.792 768 567.426L432 761.415C389.333 786.049 336 755.257 336 705.99V318.01C336 268.743 389.333 237.951 432 262.585L768 456.574Z" fill="white"/><animateTransform attributeType='xml' attributeName='transform' type='rotate' from='0 512 512' to='360 512 512' dur='2s' additive='sum' repeatCount='indefinite' /></g><defs><clipPath id="clip0_626_2"><rect width="1024" height="1024" fill="white"/></clipPath></defs></svg>`;
+    }
+
 }
