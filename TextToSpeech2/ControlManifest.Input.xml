@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="smc" constructor="TextToSpeech2" version="0.0.3" display-name-key="Text to speech v2.0" description-key="Text to speech v2.0 PCF component" control-type="standard" >
+  <control namespace="smc" constructor="TextToSpeech2" version="1.0.4" display-name-key="Text to speech v2.0" description-key="Text to speech v2.0 PCF component" control-type="standard" >
     <external-service-usage enabled="false">
       <domain>uksouth.tts.speech.microsoft.com</domain>
     </external-service-usage>
@@ -11,8 +11,7 @@
     <property name="voice" display-name-key="Voice" description-key="The voice to use" of-type="SingleLine.Text" usage="input" required="true" default-value="en-GB-RyanNeural" />
     <property name="state" display-name-key="State" description-key="The component state (waiting or playing)" of-type="SingleLine.Text" usage="bound" required="false" default-value="idle" />
     <property name="autoSpeak" display-name-key="Auto Speak" description-key="If true, speak immediately" of-type="TwoOptions" usage="bound" required="false" default-value="false" />
-    <property name="playColor" display-name-key="Play Color" description-key="The color of the play button" of-type="SingleLine.Text" usage="input" required="false" default-value="#00A4EF"/>
-    <property name="stopColor" display-name-key="Stop Color" description-key="The color of the stop button" of-type="SingleLine.Text" usage="input" required="false" default-value="#f25022"/>
+    <property name="stroke" display-name-key="Stroke Color" description-key="The color of the play button" of-type="SingleLine.Text" usage="input" required="false" default-value="#ffffff"/>
     <resources>
       <code path="index.ts" order="1"/>
     </resources>
