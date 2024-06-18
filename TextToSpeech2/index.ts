@@ -16,9 +16,7 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
     private _language: string;
     private _voice: string = "en-US-ChristopherNeural";
     private _autoSpeak: boolean = false;
-    private _stroke : string = "white";
-    //private _playColor: string = "blue";
-    //private _stopColor: string = "red";
+    private _stroke: string = "white";
     private _width: number = 0;
     private _height: number = 0;
 
@@ -28,6 +26,7 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
 
     // player attribute
     private _player: SpeechSDK.SpeakerAudioDestination;
+    private _audio: HTMLAudioElement | null;
 
     /**
      * Empty constructor.
@@ -35,27 +34,14 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
     constructor() {
     }
 
-    /**
-     * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
-     * Data-set values are not initialized here, use updateView.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to property names defined in the manifest, as well as utility functions.
-     * @param notifyOutputChanged A callback method to alert the framework that the control has new outputs ready to be retrieved asynchronously.
-     * @param state A piece of data that persists in one session for a single user. Can be set at any point in a controls life cycle by calling 'setControlState' in the Mode interface.
-     * @param container If a control is marked control-type='standard', it will receive an empty div element within which it can render its content.
-     */
     public init(context: ComponentFramework.Context<IInputs>, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary, container: HTMLDivElement): void {
         // Add control initialization code
         this._context = context;
         this._context.mode.trackContainerResize(true);
         this._container = container;
-        // save the notifyOutputChanged
         this._notifyOutputChanged = notifyOutputChanged;
     }
 
-    /**
-     * Called when any value in the property bag has changed. This includes field values, data-sets, global values such as container height and width, offline status, control metadata values such as label, visible, etc.
-     * @param context The entire property bag available to control via Context Object; It contains values as set up by the customizer mapped to names defined in the manifest, as well as utility functions
-     */
     public updateView(context: ComponentFramework.Context<IInputs>): void {
         //has anything changed?  If not, bug out
         if (this._text === context.parameters.text.raw &&
@@ -111,10 +97,6 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
         if (this._autoSpeak) this.buttonPressed();
     }
 
-    /**
-     * It is called by the framework prior to a control receiving new data.
-     * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
-     */
     public getOutputs(): IOutputs {
         return {
             "state": this._state,
@@ -122,10 +104,6 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
         };
     }
 
-    /**
-     * Called when the control is to be removed from the DOM tree. Controls should use this call for cleanup.
-     * i.e. cancelling any pending remote calls, removing listeners, etc.
-     */
     public destroy(): void {
         // Add code to cleanup control if necessary
     }
@@ -144,7 +122,12 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
 
         // check if we are already speaking
         if (this._state === "speaking") {
-            this._player.internalAudio.currentTime = this._player.internalAudio.duration;
+            //pause the audio  
+            if(this._audio)
+            {
+                this._audio.pause();
+                this._audio = null;
+            }
             this._state = "idle";
             this._notifyOutputChanged();
             this.setPlayButton();
@@ -157,73 +140,77 @@ export class TextToSpeech2 implements ComponentFramework.StandardControl<IInputs
         this._notifyOutputChanged();
         this.setAnimatedButton();
 
-        //use the speech sdk to synthesize the text
-        this._player = new SpeechSDK.SpeakerAudioDestination();
-        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(this._subscriptionKey, this._region);
-        const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(this._player);
+        // //use the speech sdk to synthesize the text
+        // this._player = new SpeechSDK.SpeakerAudioDestination();
+        // const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(this._subscriptionKey, this._region);
+        // const audioConfig = SpeechSDK.AudioConfig.fromSpeakerOutput(this._player);
 
-        // configure the speech synthesis
-        speechConfig.speechSynthesisVoiceName = this._voice;
-        speechConfig.speechSynthesisLanguage = this._language;
-        speechConfig.speechSynthesisOutputFormat = SpeechSDK.SpeechSynthesisOutputFormat.Audio16Khz64KBitRateMonoMp3;
+        // // configure the speech synthesis
+        // speechConfig.speechSynthesisVoiceName = this._voice;
+        // speechConfig.speechSynthesisLanguage = this._language;
+        // speechConfig.speechSynthesisOutputFormat = SpeechSDK.SpeechSynthesisOutputFormat.Audio16Khz64KBitRateMonoMp3;
 
-        // create the synthesizer with an undefined audioConfig
-        const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
+        // // create the synthesizer with an undefined audioConfig
+        // const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, audioConfig);
 
-        console.log("created synthesizer");
+        // console.log(`Created synthesizer with properties: ${JSON.stringify(synthesizer.properties)}`);
+        // console.log(`Created speech config; ${JSON.stringify(speechConfig)}`);
+        // console.log(`Created player: ${JSON.stringify(this._player)}`);
 
-        synthesizer.speakTextAsync(
-            this._text,
-            (result: SpeechSDK.SpeechSynthesisResult) => {
-                console.log(result);
-                synthesizer.close();
-            }
-        );
-
-        this._player.onAudioStart = () => {
-            console.log("audio started");
-            this._state = "speaking";
-            this._notifyOutputChanged()
-            this.setStopButton();
-        };
-
-        this._player.onAudioEnd = () => {
-            console.log("audio ended");
-            this.setPlayButton();
-            this._state = "idle";
-            this._notifyOutputChanged();
-        };
-
-
-        // // create the async function
-        // const restAction = async () => {
-        //     const response = await fetch(`https://${this._region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
-        //         method : "post",
-        //         headers: {
-        //             "Ocp-Apim-Subscription-Key":`${this._subscriptionKey}`,
-        //             "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
-        //             "Content-Type": "application/ssml+xml"
-        //         },
-        //         body: `<speak version='1.0' xml:lang='${this._language}'><voice xml:lang='${this._language}' xml:gender='Male' name='${this._voice}'>${this._text}</voice></speak>`
+        // synthesizer.speakTextAsync(
+        //     this._text,
+        //     (result: SpeechSDK.SpeechSynthesisResult) => {
+        //         console.log(`Speak text success: ${JSON.stringify(result.reason)}`);
+        //         synthesizer.close();
         //     }
-        //     ).then(result => result.blob()
-        //     ).then(blob => {
-        //         // change to stop button
-        //         this._state = "speaking";
-        //         this.setStopButton();
-        //         const audioURL = URL.createObjectURL(blob);
-        //         this._audio = new Audio(audioURL);
-        //         this._audio.onended = () => {
-        //             this._state = "idle"; 
-        //             this._notifyOutputChanged();
-        //             this.setPlayButton();
-        //         }
-        //         this._audio.play();
-        //     });
-        // }
+        // );
 
-        // // do it
-        // restAction();
+        // this._player.onAudioStart = () => {
+        //     console.log("audio started");
+        //     this._state = "speaking";
+        //     this._notifyOutputChanged()
+        //     this.setStopButton();
+        // };
+
+        // this._player.onAudioEnd = () => {
+        //     console.log("audio ended");
+        //     this.setPlayButton();
+        //     this._state = "idle";
+        //     this._notifyOutputChanged();
+        // };
+
+        console.log(`Creating the audio element`);
+
+        // create the async function
+        const restAction = async () => {
+            const response = await fetch(`https://${this._region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+                method : "post",
+                headers: {
+                    "Ocp-Apim-Subscription-Key":`${this._subscriptionKey}`,
+                    "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
+                    "Content-Type": "application/ssml+xml"
+                },
+                body: `<speak version='1.0' xml:lang='${this._language}'><voice xml:lang='${this._language}' xml:gender='Male' name='${this._voice}'>${this._text}</voice></speak>`
+            }
+            ).then(result => result.blob()
+            ).then(blob => {
+                // change to stop button
+                this._state = "speaking";
+                this._notifyOutputChanged();
+                this.setStopButton();
+                const audioURL = URL.createObjectURL(blob);
+                this._audio = new Audio(audioURL);
+                this._audio.onended = () => {
+                    this._state = "idle"; 
+                    this._notifyOutputChanged();
+                    this.setPlayButton();
+                }
+                this._audio.play();
+            });
+        }
+
+        // do it
+        restAction();
     }
 
     public setPlayButton() {
